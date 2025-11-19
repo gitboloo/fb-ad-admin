@@ -7,11 +7,11 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/ad-platform/backend/configs"
-	"github.com/ad-platform/backend/internal/api"
-	"github.com/ad-platform/backend/internal/database"
-	"github.com/ad-platform/backend/internal/middleware"
-	"github.com/ad-platform/backend/internal/models"
+	"backend/configs"
+	"backend/api"
+	"backend/database"
+	"backend/middleware"
+	"backend/models"
 	"github.com/gin-gonic/gin"
 )
 

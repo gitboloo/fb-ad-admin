@@ -15,27 +15,46 @@
 ## 项目结构
 
 ```
-ad-platform/backend/
-├── cmd/                    # 应用入口
+backend/
+├── api/                   # API路由定义和控制器
+├── bin/                   # 编译输出目录
+│   └── server.exe
+├── cmd/                   # 应用入口
 │   └── main.go
-├── configs/                # 配置文件
+├── configs/               # 配置管理
 │   └── config.go
-├── internal/               # 内部包
-│   ├── api/               # API控制器和路由
-│   ├── database/          # 数据库连接
-│   ├── middleware/        # 中间件
-│   ├── models/           # 数据模型
-│   ├── repository/       # 数据访问层
-│   ├── service/          # 业务逻辑层
-│   └── utils/            # 工具函数
-├── pkg/                   # 公共包
-│   ├── constants/        # 常量定义
-│   └── logger/           # 日志工具
-├── .env.example          # 环境变量示例
-├── .gitignore           # Git忽略文件
-├── go.mod               # Go模块文件
-├── Makefile             # 构建脚本
-└── README.md            # 项目说明
+├── controllers/           # 控制器层(MVC架构)
+│   ├── admin/            # 管理员控制器
+│   └── agent/            # 代理商控制器
+├── database/              # 数据库连接
+│   ├── mysql.go
+│   └── redis.go
+├── middleware/            # 中间件
+│   ├── auth.go
+│   ├── cors.go
+│   ├── logger.go
+│   └── rate_limit.go
+├── models/                # 数据模型(ORM)
+│   ├── admin.go
+│   ├── agent.go
+│   ├── product.go
+│   └── ...
+├── repositories/          # 数据访问层(Repository)
+│   ├── admin_repository.go
+│   ├── agent_repository.go
+│   └── ...
+├── router/                # 路由注册
+│   └── router.go
+├── services/              # 业务逻辑层(Service)
+│   ├── admin_service.go
+│   ├── agent_service.go
+│   └── ...
+├── types/                 # 类型定义
+├── utils/                 # 工具函数
+├── .env                   # 环境变量配置
+├── .env.example           # 环境变量示例
+├── go.mod                 # Go模块文件
+└── README.md              # 项目说明
 ```
 
 ## 数据模型
@@ -192,10 +211,12 @@ make build-linux
 ## 开发指南
 
 ### 添加新模型
-1. 在 `internal/models/` 中创建模型文件
-2. 在 `internal/models/migrate.go` 中添加到 `AllModels()` 函数
-3. 创建对应的 Repository 和 Service
-4. 添加 API Controller 和路由
+1. 在 `models/` 中创建模型文件
+2. 在 `models/migrate.go` 中添加到 `AllModels()` 函数
+3. 在 `repositories/` 中创建对应的 Repository
+4. 在 `services/` 中创建对应的 Service
+5. 在 `controllers/` 中添加 Controller
+6. 在 `router/` 或 `api/` 中添加路由
 
 ### 中间件
 项目包含以下中间件：
