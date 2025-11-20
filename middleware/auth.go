@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"backend/utils"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -26,20 +27,19 @@ func AuthMiddleware() gin.HandlerFunc {
 		}
 
 		tokenString := authHeader[7:] // 去掉"Bearer "
-		
+
 		// 解析token
 		claims, err := utils.ParseToken(tokenString)
 		if err != nil {
-			utils.Unauthorized(c, "无效的认证信息")
+			// 返回详细的错误信息便于调试
+			utils.Unauthorized(c, "无效的认证信息: "+err.Error())
 			c.Abort()
 			return
-		}
-
-		// 将用户信息存储到上下文中
+		} // 将用户信息存储到上下文中
 		c.Set("user_id", claims.UserID)
 		c.Set("username", claims.Username)
 		c.Set("user_role", claims.Role)
-		
+
 		c.Next()
 	}
 }

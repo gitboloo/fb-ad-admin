@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"backend/types"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -19,7 +20,7 @@ func jsonResponse(c *gin.Context, status int, obj interface{}) {
 		c.JSON(status, gin.H{"error": "编码错误"})
 		return
 	}
-	
+
 	c.Data(status, "application/json; charset=utf-8", buffer.Bytes())
 }
 
@@ -103,10 +104,10 @@ func ValidateError(c *gin.Context, err error) {
 	})
 }
 
-// Created 201创建成功
+// Created 创建成功
 func Created(c *gin.Context, data interface{}) {
-	c.JSON(http.StatusCreated, types.Response{
-		Code:    201,
+	c.JSON(http.StatusOK, types.Response{
+		Code:    200,
 		Message: "创建成功",
 		Data:    data,
 	})

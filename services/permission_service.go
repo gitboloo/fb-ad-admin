@@ -26,7 +26,7 @@ func NewPermissionService() *PermissionService {
 // GetUserPermissions 获取用户权限列表
 func (s *PermissionService) GetUserPermissions(adminID uint) ([]string, error) {
 	db := database.GetDB()
-	
+
 	// 获取用户的所有权限
 	permissions, err := models.GetPermissionsByAdminID(db, adminID)
 	if err != nil {
@@ -47,7 +47,7 @@ func (s *PermissionService) GetUserPermissions(adminID uint) ([]string, error) {
 // GetUserMenuTree 获取用户菜单树
 func (s *PermissionService) GetUserMenuTree(adminID uint) ([]models.Permission, error) {
 	db := database.GetDB()
-	
+
 	// 获取用户的所有权限
 	permissions, err := models.GetPermissionsByAdminID(db, adminID)
 	if err != nil {
@@ -98,6 +98,16 @@ func (s *PermissionService) buildMenuTree(permissions []models.Permission) []mod
 // GetAllPermissions 获取所有权限
 func (s *PermissionService) GetAllPermissions() ([]models.Permission, error) {
 	return s.permissionRepo.GetAll()
+}
+
+// GetPermissionByID 根据ID获取权限详情
+func (s *PermissionService) GetPermissionByID(id string) (*models.Permission, error) {
+	permID, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		return nil, errors.New("无效的权限ID")
+	}
+
+	return s.permissionRepo.GetByID(uint(permID))
 }
 
 // CreatePermission 创建权限

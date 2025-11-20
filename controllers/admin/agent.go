@@ -22,10 +22,14 @@ func NewAgentHandler(db *gorm.DB) *AgentHandler {
 
 // CreateAgentRequest 创建代理商请求
 type CreateAgentRequest struct {
-	AdminID       uint   `json:"admin_id" binding:"required"` // 关联的Admin ID
-	AgentLevel    int    `json:"agent_level" binding:"required,min=1,max=3"`
-	ParentAdminID *uint  `json:"parent_admin_id"` // 上级代理的AdminID
-	Remark        string `json:"remark"`
+	// Admin 账户信息
+	Username string `json:"username" binding:"required,min=3,max=20"` // 昵称/显示名称
+	Account  string `json:"account" binding:"required"`               // 登录账号
+	Password string `json:"password" binding:"required,min=6"`        // 密码
+
+	// Agent 信息
+	AgentLevel int    `json:"agent_level" binding:"required,min=1,max=3"`
+	Remark     string `json:"remark"`
 }
 
 // List 获取代理商列表
@@ -53,7 +57,7 @@ func (h *AgentHandler) List(c *gin.Context) {
 	})
 }
 
-// Create 创建代理商
+// Create 创建代理商（同时创建Admin账户和Agent信息）
 // POST /api/admin/agents
 func (h *AgentHandler) Create(c *gin.Context) {
 	var req CreateAgentRequest
@@ -62,20 +66,72 @@ func (h *AgentHandler) Create(c *gin.Context) {
 		return
 	}
 
+	// 获取当前登录管理员ID作为上级代理
+	currentAdminID, exists := c.Get("admin_id")
+	if !exists {
+		utils.Unauthorized(c, "未登录")
+		return
+	}
+	parentAdminID := currentAdminID.(uint)
+
+	// 检查用户名是否已存在
+	var existingAdmin models.Admin
+	if err := h.db.Where("username = ?", req.Username).First(&existingAdmin).Error; err == nil {
+		utils.BadRequest(c, "用户名已存在")
+		return
+	}
+
+	// 开启事务
+	tx := h.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// 1. 创建 Admin 账户
+	// 注意: Admin模型的BeforeCreate钩子会自动加密密码
+	admin := models.Admin{
+		Username: req.Account,  // 登录账号
+		Account:  req.Username, // 昵称/显示名称
+		Password: req.Password, // 原始密码,BeforeCreate会自动加密
+		Status:   models.AdminStatusActive,
+	}
+
+	if err := tx.Create(&admin).Error; err != nil {
+		tx.Rollback()
+		utils.ServerError(c, "创建Admin账户失败")
+		return
+	}
+
+	// 2. 创建 Agent 信息
 	agent := models.Agent{
-		AdminID:       req.AdminID,
+		AdminID:       admin.ID,
 		AgentLevel:    models.AgentLevel(req.AgentLevel),
-		ParentAdminID: req.ParentAdminID,
+		ParentAdminID: &parentAdminID, // 使用当前登录管理员ID作为上级
 		Status:        models.AgentStatusActive,
 		Remark:        req.Remark,
 	}
 
-	if err := h.db.Create(&agent).Error; err != nil {
-		utils.ServerError(c, "创建失败")
+	if err := tx.Create(&agent).Error; err != nil {
+		tx.Rollback()
+		utils.ServerError(c, "创建Agent信息失败")
 		return
 	}
 
-	utils.Success(c, gin.H{"data": agent})
+	// 提交事务
+	if err := tx.Commit().Error; err != nil {
+		utils.ServerError(c, "提交失败")
+		return
+	}
+
+	// 重新加载关联数据
+	h.db.Preload("Admin").First(&agent, agent.ID)
+
+	utils.Success(c, gin.H{
+		"data":    agent,
+		"message": "创建成功",
+	})
 }
 
 // Detail 获取代理商详情

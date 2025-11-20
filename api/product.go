@@ -7,19 +7,22 @@ import (
 	"backend/services"
 	"backend/types"
 	"backend/utils"
+
 	"github.com/gin-gonic/gin"
 )
 
 // ProductRequest 产品请求结构
 type ProductRequest struct {
-	Name           string               `json:"name" binding:"required,max=255"`
-	Type           models.ProductType   `json:"type" binding:"required,min=1,max=4"`
-	Company        string               `json:"company" binding:"max=255"`
-	Description    string               `json:"description"`
-	Status         models.ProductStatus `json:"status" binding:"min=0,max=2"`
-	GooglePayLink  string               `json:"google_pay_link" binding:"omitempty,url,max=500"`
-	AppStoreLink   string               `json:"app_store_link" binding:"omitempty,url,max=500"`
-	AppInfo        *models.AppInfo      `json:"app_info"`
+	Name          string             `json:"name" binding:"required,max=255"`
+	Type          string             `json:"type" binding:"max=100"`
+	Company       string             `json:"company" binding:"max=255"`
+	Description   string             `json:"description"`
+	Status        int                `json:"status" binding:"min=0,max=2"`
+	Logo          string             `json:"logo" binding:"max=500"`
+	Images        []string           `json:"images"`
+	GooglePayLink string             `json:"googlePayLink" binding:"omitempty,url,max=500"`
+	AppStoreLink  string             `json:"appStoreLink" binding:"omitempty,url,max=500"`
+	AppInfo       models.AppInfoList `json:"appInfo"`
 }
 
 // ProductController 产品控制器
@@ -85,10 +88,23 @@ func (pc *ProductController) Create(c *gin.Context) {
 		Type:          req.Type,
 		Company:       req.Company,
 		Description:   req.Description,
-		Status:        req.Status,
+		Status:        models.ProductStatus(req.Status),
+		Logo:          req.Logo,
 		GooglePayLink: req.GooglePayLink,
 		AppStoreLink:  req.AppStoreLink,
-		AppInfo:       req.AppInfo,
+	}
+
+	// 处理图片数组
+	if len(req.Images) > 0 {
+		if err := product.SetImages(req.Images); err != nil {
+			utils.InternalServerError(c, "图片数据处理失败")
+			return
+		}
+	}
+
+	// 处理AppInfo
+	if len(req.AppInfo) > 0 {
+		product.AppInfo = req.AppInfo
 	}
 
 	if err := pc.productService.Create(product); err != nil {
@@ -129,10 +145,23 @@ func (pc *ProductController) Update(c *gin.Context) {
 	product.Type = req.Type
 	product.Company = req.Company
 	product.Description = req.Description
-	product.Status = req.Status
+	product.Status = models.ProductStatus(req.Status)
+	product.Logo = req.Logo
 	product.GooglePayLink = req.GooglePayLink
 	product.AppStoreLink = req.AppStoreLink
-	product.AppInfo = req.AppInfo
+
+	// 处理图片数组
+	if len(req.Images) > 0 {
+		if err := product.SetImages(req.Images); err != nil {
+			utils.InternalServerError(c, "图片数据处理失败")
+			return
+		}
+	}
+
+	// 处理AppInfo
+	if len(req.AppInfo) > 0 {
+		product.AppInfo = req.AppInfo
+	}
 
 	if err := pc.productService.Update(product); err != nil {
 		utils.InternalServerError(c, "更新产品失败")
@@ -160,6 +189,41 @@ func (pc *ProductController) Delete(c *gin.Context) {
 	}
 
 	utils.Deleted(c)
+}
+
+// UpdateStatus 更新产品状态
+func (pc *ProductController) UpdateStatus(c *gin.Context) {
+	var uriReq types.IDRequest
+	if err := c.ShouldBindUri(&uriReq); err != nil {
+		utils.ValidateError(c, err)
+		return
+	}
+
+	var bodyReq types.StatusRequest
+	if err := c.ShouldBindJSON(&bodyReq); err != nil {
+		utils.ValidateError(c, err)
+		return
+	}
+
+	// 获取产品
+	product, err := pc.productService.GetByID(uriReq.ID)
+	if err != nil {
+		if err.Error() == "产品不存在" {
+			utils.NotFound(c, "产品不存在")
+		} else {
+			utils.InternalServerError(c, "获取产品信息失败")
+		}
+		return
+	}
+
+	// 更新状态
+	product.Status = models.ProductStatus(bodyReq.Status)
+	if err := pc.productService.Update(product); err != nil {
+		utils.InternalServerError(c, "更新状态失败")
+		return
+	}
+
+	utils.Success(c, product)
 }
 
 // UploadLogo 上传产品Logo
@@ -282,4 +346,48 @@ func (pc *ProductController) GetStatistics(c *gin.Context) {
 	}
 
 	utils.Success(c, stats)
+}
+
+// UploadFile 通用文件上传（不需要产品ID）
+func (pc *ProductController) UploadFile(c *gin.Context) {
+	// 获取上传的文件
+	file, err := c.FormFile("file")
+	if err != nil {
+		utils.BadRequest(c, "请选择要上传的文件")
+		return
+	}
+
+	// 保存文件到 products 目录
+	uploadResp, err := utils.SaveUploadedFile(c, file, "products")
+	if err != nil {
+		utils.BadRequest(c, "上传失败: "+err.Error())
+		return
+	}
+
+	utils.Success(c, uploadResp)
+}
+
+// UploadFiles 通用多文件上传（不需要产品ID）
+func (pc *ProductController) UploadFiles(c *gin.Context) {
+	// 获取上传的文件
+	form, err := c.MultipartForm()
+	if err != nil {
+		utils.BadRequest(c, "获取上传文件失败")
+		return
+	}
+
+	files := form.File["files"]
+	if len(files) == 0 {
+		utils.BadRequest(c, "请选择要上传的文件")
+		return
+	}
+
+	// 保存所有文件
+	uploadResponses, err := utils.SaveMultipleFiles(c, files, "products")
+	if err != nil {
+		utils.BadRequest(c, "上传失败: "+err.Error())
+		return
+	}
+
+	utils.Success(c, uploadResponses)
 }

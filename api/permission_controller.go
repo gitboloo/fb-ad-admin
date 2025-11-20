@@ -68,6 +68,47 @@ func (ctrl *PermissionController) GetAllPermissions(c *gin.Context) {
 	utils.Success(c, permissions)
 }
 
+// GetPermissionTree 获取权限树（管理员用）
+func (ctrl *PermissionController) GetPermissionTree(c *gin.Context) {
+	permissions, err := ctrl.permissionService.GetAllPermissions()
+	if err != nil {
+		utils.ServerError(c, "获取权限树失败")
+		return
+	}
+
+	// 构建权限树结构
+	tree := ctrl.buildPermissionTree(permissions, 0)
+	utils.Success(c, tree)
+}
+
+// buildPermissionTree 构建权限树
+func (ctrl *PermissionController) buildPermissionTree(permissions []models.Permission, parentID uint) []models.Permission {
+	var tree []models.Permission
+	for _, perm := range permissions {
+		if perm.ParentID == parentID {
+			children := ctrl.buildPermissionTree(permissions, perm.ID)
+			if len(children) > 0 {
+				perm.Children = children
+			}
+			tree = append(tree, perm)
+		}
+	}
+	return tree
+}
+
+// GetPermissionByID 获取权限详情
+func (ctrl *PermissionController) GetPermissionByID(c *gin.Context) {
+	id := c.Param("id")
+
+	permission, err := ctrl.permissionService.GetPermissionByID(id)
+	if err != nil {
+		utils.NotFound(c, "权限不存在")
+		return
+	}
+
+	utils.Success(c, permission)
+}
+
 // CreatePermission 创建权限
 func (ctrl *PermissionController) CreatePermission(c *gin.Context) {
 	var req models.Permission

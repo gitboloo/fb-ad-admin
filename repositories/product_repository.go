@@ -7,6 +7,7 @@ import (
 	"backend/database"
 	"backend/models"
 	"backend/types"
+
 	"gorm.io/gorm"
 )
 
@@ -32,7 +33,7 @@ func (pr *ProductRepository) List(req *types.FilterRequest) ([]*models.Product, 
 	// 搜索条件
 	if req.Search != "" {
 		searchPattern := "%" + req.Search + "%"
-		query = query.Where("name LIKE ? OR company LIKE ? OR description LIKE ?", 
+		query = query.Where("name LIKE ? OR company LIKE ? OR description LIKE ?",
 			searchPattern, searchPattern, searchPattern)
 	}
 
@@ -115,7 +116,7 @@ func (pr *ProductRepository) GetByStatus(status models.ProductStatus) ([]*models
 }
 
 // GetByType 根据类型获取产品
-func (pr *ProductRepository) GetByType(productType models.ProductType) ([]*models.Product, error) {
+func (pr *ProductRepository) GetByType(productType string) ([]*models.Product, error) {
 	var products []*models.Product
 	if err := pr.db.Where("type = ?", productType).Find(&products).Error; err != nil {
 		return nil, err
@@ -127,14 +128,14 @@ func (pr *ProductRepository) GetByType(productType models.ProductType) ([]*model
 func (pr *ProductRepository) Search(keyword string, limit int) ([]*models.Product, error) {
 	var products []*models.Product
 	searchPattern := "%" + strings.TrimSpace(keyword) + "%"
-	
-	query := pr.db.Where("name LIKE ? OR company LIKE ? OR description LIKE ?", 
+
+	query := pr.db.Where("name LIKE ? OR company LIKE ? OR description LIKE ?",
 		searchPattern, searchPattern, searchPattern)
-	
+
 	if limit > 0 {
 		query = query.Limit(limit)
 	}
-	
+
 	if err := query.Find(&products).Error; err != nil {
 		return nil, err
 	}
@@ -194,8 +195,8 @@ func (pr *ProductRepository) GetStatistics() (*types.StatisticsResponse, error) 
 
 	// 按类型统计
 	var typeStats []struct {
-		Type  models.ProductType `json:"type"`
-		Count int64              `json:"count"`
+		Type  string `json:"type"`
+		Count int64  `json:"count"`
 	}
 	if err := pr.db.Model(&models.Product{}).
 		Select("type, COUNT(*) as count").
@@ -206,18 +207,10 @@ func (pr *ProductRepository) GetStatistics() (*types.StatisticsResponse, error) 
 
 	categories := make(map[string]interface{})
 	for _, stat := range typeStats {
-		var typeName string
-		switch stat.Type {
-		case models.ProductTypeApp:
-			typeName = "应用"
-		case models.ProductTypeGame:
-			typeName = "游戏"
-		case models.ProductTypeWeb:
-			typeName = "网站"
-		case models.ProductTypeOther:
-			typeName = "其他"
-		default:
-			typeName = "未知"
+		// 直接使用type作为key，如果为空则显示为"未分类"
+		typeName := stat.Type
+		if typeName == "" {
+			typeName = "未分类"
 		}
 		categories[typeName] = stat.Count
 	}
@@ -237,7 +230,7 @@ func (pr *ProductRepository) GetStatistics() (*types.StatisticsResponse, error) 
 	// 计算增长率（与上周同期比较）
 	var currentWeek int64
 	var lastWeek int64
-	
+
 	pr.db.Model(&models.Product{}).
 		Where("created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)").Count(&currentWeek)
 	pr.db.Model(&models.Product{}).

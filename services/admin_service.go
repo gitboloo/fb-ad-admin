@@ -7,6 +7,7 @@ import (
 	"backend/models"
 	"backend/repositories"
 	"backend/utils"
+
 	"gorm.io/gorm"
 )
 
@@ -21,16 +22,16 @@ func NewAdminService() *AdminService {
 }
 
 // Login 管理员登录
-func (s *AdminService) Login(username, password string) (*models.Admin, string, error) {
+func (s *AdminService) Login(account, password string) (*models.Admin, string, error) {
 	// 参数验证
-	if username == "" || password == "" {
-		return nil, "", errors.New("用户名和密码不能为空")
+	if account == "" || password == "" {
+		return nil, "", errors.New("账号和密码不能为空")
 	}
 
-	// 通过用户名查找管理员
-	admin, err := s.adminRepo.GetByUsername(username)
+	// 通过账号查找管理员
+	admin, err := s.adminRepo.GetByAccount(account)
 	if err != nil {
-		return nil, "", errors.New("用户名或密码错误")
+		return nil, "", errors.New("账号或密码错误")
 	}
 
 	// 检查账户状态

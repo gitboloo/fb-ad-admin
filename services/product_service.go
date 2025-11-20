@@ -88,7 +88,7 @@ func (ps *ProductService) GetProductsByStatus(status models.ProductStatus) ([]*m
 }
 
 // GetProductsByType 根据类型获取产品列表
-func (ps *ProductService) GetProductsByType(productType models.ProductType) ([]*models.Product, error) {
+func (ps *ProductService) GetProductsByType(productType string) ([]*models.Product, error) {
 	return ps.productRepo.GetByType(productType)
 }
 

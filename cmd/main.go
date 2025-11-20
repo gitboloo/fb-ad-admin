@@ -7,11 +7,13 @@ import (
 	"os/signal"
 	"syscall"
 
-	"backend/configs"
 	"backend/api"
+	"backend/configs"
 	"backend/database"
 	"backend/middleware"
 	"backend/models"
+	"backend/router"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -42,7 +44,8 @@ func main() {
 	setupMiddleware(r)
 
 	// 设置路由
-	api.SetupRoutes(r)
+	api.SetupRoutes(r)                 // 健康检查和静态文件路由
+	router.SetupRouter(r, database.DB) // 业务路由
 
 	// 启动服务器
 	addr := fmt.Sprintf("%s:%d", configs.AppConfig.Server.Host, configs.AppConfig.Server.Port)
