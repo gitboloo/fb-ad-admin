@@ -140,6 +140,11 @@ func (h *CampaignHandler) Resume(c *gin.Context) {
 	h.controller.Resume(c)
 }
 
+// UploadFile 通用文件上传
+func (h *CampaignHandler) UploadFile(c *gin.Context) {
+	h.controller.UploadFile(c)
+}
+
 // CustomerHandler 客户管理（包装旧的CustomerController）
 type CustomerHandler struct {
 	controller *api.CustomerController

@@ -4,6 +4,8 @@ import (
 	"backend/models"
 	"backend/repositories"
 	"backend/types"
+	"fmt"
+	"time"
 )
 
 // CampaignService 计划服务
@@ -30,11 +32,30 @@ func (cs *CampaignService) GetByID(id uint) (*models.Campaign, error) {
 
 // Create 创建计划
 func (cs *CampaignService) Create(campaign *models.Campaign) error {
+	// 如果没有计划编号，自动生成
+	if campaign.CampaignNumber == "" {
+		campaign.CampaignNumber = cs.generateCampaignNumber()
+	}
 	return cs.campaignRepo.Create(campaign)
+}
+
+// generateCampaignNumber 生成计划编号
+func (cs *CampaignService) generateCampaignNumber() string {
+	// 格式：CP + 年月日 + 时分秒 + 3位随机数
+	// 例如：CP20250905164531001
+	now := time.Now()
+	return fmt.Sprintf("CP%s%03d",
+		now.Format("20060102150405"),
+		now.Nanosecond()/1000000%1000,
+	)
 }
 
 // Update 更新计划
 func (cs *CampaignService) Update(campaign *models.Campaign) error {
+	// 如果计划编号为空，自动生成
+	if campaign.CampaignNumber == "" {
+		campaign.CampaignNumber = cs.generateCampaignNumber()
+	}
 	return cs.campaignRepo.Update(campaign)
 }
 

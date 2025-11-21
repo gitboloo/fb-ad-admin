@@ -1,26 +1,30 @@
 package api
 
 import (
+	"fmt"
+	"log"
 	"strconv"
+	"strings"
 
 	"backend/models"
 	"backend/services"
 	"backend/types"
 	"backend/utils"
+
 	"github.com/gin-gonic/gin"
 )
 
 // CampaignRequest 计划请求结构
 type CampaignRequest struct {
-	Name            string                  `json:"name" binding:"required,max=255"`
-	ProductID       uint                    `json:"product_id" binding:"required,min=1"`
-	Description     string                  `json:"description"`
-	Status          models.CampaignStatus   `json:"status" binding:"min=0,max=3"`
-	MainImage       string                  `json:"main_image"`
-	Video           string                  `json:"video"`
-	DeliveryContent models.CustomFieldList  `json:"delivery_content"`
-	DeliveryRules   models.CustomFieldList  `json:"delivery_rules"`
-	UserTargeting   models.CustomFieldList  `json:"user_targeting"`
+	Name            string                 `json:"name" binding:"required,max=255"`
+	ProductID       uint                   `json:"product_id" binding:"required,min=1"`
+	Description     string                 `json:"description"`
+	Status          models.CampaignStatus  `json:"status" binding:"min=0,max=3"`
+	MainImage       string                 `json:"main_image"`
+	Video           string                 `json:"video"`
+	DeliveryContent models.CustomFieldList `json:"delivery_content"`
+	DeliveryRules   models.CustomFieldList `json:"delivery_rules"`
+	UserTargeting   models.CustomFieldList `json:"user_targeting"`
 }
 
 // CampaignController 计划控制器
@@ -57,7 +61,9 @@ func (cc *CampaignController) List(c *gin.Context) {
 
 	campaigns, total, err := cc.campaignService.List(&req, productID)
 	if err != nil {
-		utils.InternalServerError(c, "获取计划列表失败")
+		// 添加详细错误日志
+		c.Error(err)
+		utils.InternalServerError(c, "获取计划列表失败: "+err.Error())
 		return
 	}
 
@@ -185,7 +191,8 @@ func (cc *CampaignController) Update(c *gin.Context) {
 	campaign.UserTargeting = req.UserTargeting
 
 	if err := cc.campaignService.Update(campaign); err != nil {
-		utils.InternalServerError(c, "更新计划失败")
+		log.Printf("Update campaign error: %v", err)
+		utils.InternalServerError(c, fmt.Sprintf("更新计划失败: %v", err))
 		return
 	}
 
@@ -395,4 +402,32 @@ func (cc *CampaignController) Resume(c *gin.Context) {
 	}
 
 	utils.SuccessWithMessage(c, "计划已恢复", nil)
+}
+
+// UploadFile 通用文件上传（不需要计划ID，用于创建计划时上传）
+func (cc *CampaignController) UploadFile(c *gin.Context) {
+	// 获取上传的文件
+	file, err := c.FormFile("file")
+	if err != nil {
+		utils.BadRequest(c, "请选择要上传的文件")
+		return
+	}
+
+	// 根据文件类型决定保存目录
+	subDir := "campaigns"
+	fileExt := strings.ToLower(file.Header.Get("Content-Type"))
+	if strings.HasPrefix(fileExt, "video/") {
+		subDir = "campaigns/videos"
+	} else if strings.HasPrefix(fileExt, "image/") {
+		subDir = "campaigns/images"
+	}
+
+	// 保存文件
+	uploadResp, err := utils.SaveUploadedFile(c, file, subDir)
+	if err != nil {
+		utils.BadRequest(c, "上传失败: "+err.Error())
+		return
+	}
+
+	utils.Success(c, uploadResp)
 }

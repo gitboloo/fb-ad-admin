@@ -54,12 +54,19 @@ func (s *PermissionService) GetUserMenuTree(adminID uint) ([]models.Permission, 
 		return nil, err
 	}
 
-	// 过滤出菜单和页面类型的权限
-	var menus []models.Permission
+	// 过滤出菜单和页面类型的权限，并去重（防止多角色导致的重复权限）
+	menuMap := make(map[uint]models.Permission)
 	for _, perm := range permissions {
 		if (perm.Type == models.PermissionTypeMenu || perm.Type == models.PermissionTypePage) && perm.Status == 1 {
-			menus = append(menus, perm)
+			// 使用 map 自动去重
+			menuMap[perm.ID] = perm
 		}
+	}
+
+	// 转换为切片
+	var menus []models.Permission
+	for _, menu := range menuMap {
+		menus = append(menus, menu)
 	}
 
 	// 构建菜单树

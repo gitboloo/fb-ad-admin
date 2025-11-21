@@ -181,10 +181,10 @@ func SeedDefaultData() {
 	// 插入默认管理员账户
 	seedDefaultAdmin(db)
 
-	// 插入默认权限和角色数据
-	if err := SeedPermissions(db); err != nil {
-		log.Printf("Failed to seed permissions: %v", err)
-	}
+	// 插入默认权限和角色数据 - 已禁用，数据库已有权限数据
+	// if err := SeedPermissions(db); err != nil {
+	// 	log.Printf("Failed to seed permissions: %v", err)
+	// }
 
 	// 插入默认代理商测试数据
 	seedDefaultAgents(db)

@@ -95,7 +95,7 @@ type IdsRequest struct {
 
 // StatusRequest 状态更新请求
 type StatusRequest struct {
-	Status int `json:"status" binding:"gte=0,lte=1"`
+	Status int `json:"status" binding:"gte=0,lte=3"`
 }
 
 // UploadResponse 上传响应

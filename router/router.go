@@ -163,6 +163,7 @@ func SetupAdminRoutes(api *gin.RouterGroup, h *Handlers) {
 				campaigns.POST("", h.AdminCampaign.Create)                           // 创建
 				campaigns.PUT("/:id", h.AdminCampaign.Update)                        // 更新
 				campaigns.DELETE("/:id", h.AdminCampaign.Delete)                     // 删除
+				campaigns.POST("/upload", h.AdminCampaign.UploadFile)                // 通用文件上传
 				campaigns.POST("/:id/upload-image", h.AdminCampaign.UploadMainImage) // 上传主图
 				campaigns.POST("/:id/upload-video", h.AdminCampaign.UploadVideo)     // 上传视频
 				campaigns.GET("/:id/stats", h.AdminCampaign.GetStatistics)           // 统计

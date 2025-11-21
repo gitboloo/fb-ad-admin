@@ -2,11 +2,13 @@ package repositories
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	"backend/database"
 	"backend/models"
 	"backend/types"
+
 	"gorm.io/gorm"
 )
 
@@ -73,12 +75,15 @@ func (cr *CampaignRepository) List(req *types.FilterRequest, productID *uint) ([
 // GetByID 根据ID获取计划
 func (cr *CampaignRepository) GetByID(id uint) (*models.Campaign, error) {
 	var campaign models.Campaign
-	if err := cr.db.Preload("Product").First(&campaign, id).Error; err != nil {
+	// 先查询计划本身
+	if err := cr.db.First(&campaign, id).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("计划不存在")
 		}
 		return nil, err
 	}
+	// 尝试预加载产品,失败不影响计划查询
+	_ = cr.db.Preload("Product").First(&campaign, id).Error
 	return &campaign, nil
 }
 
@@ -89,7 +94,11 @@ func (cr *CampaignRepository) Create(campaign *models.Campaign) error {
 
 // Update 更新计划
 func (cr *CampaignRepository) Update(campaign *models.Campaign) error {
-	return cr.db.Save(campaign).Error
+	err := cr.db.Save(campaign).Error
+	if err != nil {
+		log.Printf("Campaign repository update error: %v, campaign: %+v", err, campaign)
+	}
+	return err
 }
 
 // Delete 删除计划
@@ -126,14 +135,14 @@ func (cr *CampaignRepository) GetByProductID(productID uint) ([]*models.Campaign
 func (cr *CampaignRepository) Search(keyword string, limit int) ([]*models.Campaign, error) {
 	var campaigns []*models.Campaign
 	searchPattern := "%" + strings.TrimSpace(keyword) + "%"
-	
-	query := cr.db.Preload("Product").Where("name LIKE ? OR description LIKE ?", 
+
+	query := cr.db.Preload("Product").Where("name LIKE ? OR description LIKE ?",
 		searchPattern, searchPattern)
-	
+
 	if limit > 0 {
 		query = query.Limit(limit)
 	}
-	
+
 	if err := query.Find(&campaigns).Error; err != nil {
 		return nil, err
 	}
@@ -215,7 +224,7 @@ func (cr *CampaignRepository) GetStatistics() (*types.StatisticsResponse, error)
 	// 计算增长率（与上周同期比较）
 	var currentWeek int64
 	var lastWeek int64
-	
+
 	cr.db.Model(&models.Campaign{}).
 		Where("created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)").Count(&currentWeek)
 	cr.db.Model(&models.Campaign{}).
@@ -240,7 +249,7 @@ func (cr *CampaignRepository) GetStatistics() (*types.StatisticsResponse, error)
 // GetRunningCampaigns 获取正在运行的计划
 func (cr *CampaignRepository) GetRunningCampaigns() ([]*models.Campaign, error) {
 	var campaigns []*models.Campaign
-	
+
 	// 查询活动状态且在有效期内的计划
 	if err := cr.db.Preload("Product").
 		Where("status = ?", models.CampaignStatusActive).
@@ -249,34 +258,34 @@ func (cr *CampaignRepository) GetRunningCampaigns() ([]*models.Campaign, error) 
 		Find(&campaigns).Error; err != nil {
 		return nil, err
 	}
-	
+
 	return campaigns, nil
 }
 
 // GetCampaignsByDateRange 根据日期范围获取计划
 func (cr *CampaignRepository) GetCampaignsByDateRange(startDate, endDate string) ([]*models.Campaign, error) {
 	var campaigns []*models.Campaign
-	
+
 	if err := cr.db.Preload("Product").
 		Where("JSON_EXTRACT(delivery_rules, '$.start_date') >= ?", startDate).
 		Where("JSON_EXTRACT(delivery_rules, '$.end_date') <= ?", endDate).
 		Find(&campaigns).Error; err != nil {
 		return nil, err
 	}
-	
+
 	return campaigns, nil
 }
 
 // GetExpiredCampaigns 获取已过期的计划
 func (cr *CampaignRepository) GetExpiredCampaigns() ([]*models.Campaign, error) {
 	var campaigns []*models.Campaign
-	
+
 	if err := cr.db.Preload("Product").
 		Where("status IN ?", []models.CampaignStatus{models.CampaignStatusActive, models.CampaignStatusPaused}).
 		Where("JSON_EXTRACT(delivery_rules, '$.end_date') < NOW()").
 		Find(&campaigns).Error; err != nil {
 		return nil, err
 	}
-	
+
 	return campaigns, nil
 }
